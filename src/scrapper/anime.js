@@ -3,51 +3,14 @@ import axios from 'axios';
 
 import { SRC_BASE_URL, USER_AGENT } from '../utils/constants.js';
 
-// --- Helpers ---
-const text = ($, selector) => $(selector).text()?.trim() || null;
-const attr = ($, selector, attribute) => $(selector).attr(attribute)?.trim() || null;
+import {
+  extractAnimes,
+  extractMostPopularAnimes,
+  extractText,
+  extractAttribute
+} from '../utils/scrapper-helpers.js';
 
-const extractAnimes = ($, selector) => {
-  return $(selector).map((_, el) => {
-    const $el = $(el);
-    const filmName = $el.find('.film-detail .film-name .dynamic-name');
-    const fdInfor = $el.find('.film-detail .fd-infor');
 
-    return {
-      id: filmName.attr('href')?.slice(1).split('?ref=search')[0] || null,
-      name: filmName.text()?.trim(),
-      jname: filmName.attr('data-jname')?.trim() || null,
-      poster: attr($el, '.film-poster .film-poster-img', 'data-src'),
-      duration: text($el, '.film-detail .fd-infor .fdi-item.fdi-duration'),
-      type: fdInfor.find('.fdi-item:nth-of-type(1)').text()?.trim(),
-      rating: text($el, '.film-poster .tick-rate'),
-      episodes: {
-        sub: Number(text($el, '.film-poster .tick-sub')?.split(' ').pop()) || null,
-        dub: Number(text($el, '.film-poster .tick-dub')?.split(' ').pop()) || null,
-      },
-    };
-  }).get();
-};
-
-const extractMostPopularAnimes = ($, selector) => {
-  return $(selector).map((_, el) => {
-    const $el = $(el);
-    const filmDetail = $el.find('.film-detail .dynamic-name');
-    const tick = $el.find('.fd-infor .tick');
-
-    return {
-      id: filmDetail.attr('href')?.slice(1).trim() || null,
-      name: filmDetail.text()?.trim() || null,
-      jname: $el.find('.film-detail .film-name .dynamic-name').attr('data-jname')?.trim() || null,
-      poster: attr($el, '.film-poster .film-poster-img', 'data-src'),
-      episodes: {
-        sub: Number(tick.find('.tick-sub').text()?.trim()) || null,
-        dub: Number(tick.find('.tick-dub').text()?.trim()) || null,
-      },
-      type: tick.text()?.trim()?.replace(/[\s\n]+/g, ' ')?.split(' ')?.pop() || null,
-    };
-  }).get();
-};
 
 export async function getAnimeAboutInfo(animeId) {
   const res = {
@@ -114,7 +77,7 @@ export async function getAnimeAboutInfo(animeId) {
       ?.split('/')
       ?.pop() || null;
 
-    res.anime.info.name = text($, `${selector} .anisc-detail .film-name.dynamic-name`);
+    res.anime.info.name = extractText($, `${selector} .anisc-detail .film-name.dynamic-name`);
 
     res.anime.info.description = $(selector)
       ?.find('.anisc-detail .film-description .text')
@@ -123,14 +86,14 @@ export async function getAnimeAboutInfo(animeId) {
       ?.shift()
       ?.trim() || null;
 
-    res.anime.info.poster = attr($, `${selector} .film-poster .film-poster-img`, 'src');
+    res.anime.info.poster = extractAttribute($, `${selector} .film-poster .film-poster-img`, 'src');
 
     // Stats
-    res.anime.info.stats.rating = text($, `${selector} .film-stats .tick .tick-pg`);
-    res.anime.info.stats.quality = text($, `${selector} .film-stats .tick .tick-quality`);
+    res.anime.info.stats.rating = extractText($, `${selector} .film-stats .tick .tick-pg`);
+    res.anime.info.stats.quality = extractText($, `${selector} .film-stats .tick .tick-quality`);
     res.anime.info.stats.episodes = {
-      sub: Number(text($, `${selector} .film-stats .tick .tick-sub`)) || null,
-      dub: Number(text($, `${selector} .film-stats .tick .tick-dub`)) || null,
+      sub: Number(extractText($, `${selector} .film-stats .tick .tick-sub`)) || null,
+      dub: Number(extractText($, `${selector} .film-stats .tick .tick-dub`)) || null,
     };
 
     const statsTickFn = $(`${selector} .film-stats .tick`)
@@ -157,15 +120,15 @@ export async function getAnimeAboutInfo(animeId) {
       res.anime.info.charactersVoiceActors.push({
         character: {
           id: $el.find('.per-info.ltr .pi-avatar').attr('href')?.split('/')[2] || '',
-          poster: attr($el, '.per-info.ltr .pi-avatar img', 'data-src') || '',
-          name: text($el, '.per-info.ltr .pi-detail a'),
-          cast: text($el, '.per-info.ltr .pi-detail .pi-cast'),
+          poster: extractAttribute($el, '.per-info.ltr .pi-avatar img', 'data-src') || '',
+          name: extractText($el, '.per-info.ltr .pi-detail a'),
+          cast: extractText($el, '.per-info.ltr .pi-detail .pi-cast'),
         },
         voiceActor: {
           id: $el.find('.per-info.rtl .pi-avatar').attr('href')?.split('/')[2] || '',
-          poster: attr($el, '.per-info.rtl .pi-avatar img', 'data-src') || '',
-          name: text($el, '.per-info.rtl .pi-detail a'),
-          cast: text($el, '.per-info.rtl .pi-detail .pi-cast'),
+          poster: extractAttribute($el, '.per-info.rtl .pi-avatar img', 'data-src') || '',
+          name: extractText($el, '.per-info.rtl .pi-detail a'),
+          cast: extractText($el, '.per-info.rtl .pi-detail .pi-cast'),
         },
       });
     });
@@ -203,7 +166,7 @@ export async function getAnimeAboutInfo(animeId) {
       res.seasons.push({
         id: $el.attr('href')?.slice(1)?.trim() || null,
         name: $el.attr('title')?.trim() || null,
-        title: text($el, '.title'),
+        title: extractText($el, '.title'),
         poster: $el.find('.season-poster')
           ?.attr('style')
           ?.split(' ')
